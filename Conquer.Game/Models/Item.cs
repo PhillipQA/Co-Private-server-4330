@@ -72,6 +72,7 @@ public record Item
     public uint Restrain { get; set; }
     public byte Bless { get; set; }
     public byte Enchant { get; set; }
+    public bool Legendary { get; set; }
 
     public static Item Of(ItemType type) => new()
     {

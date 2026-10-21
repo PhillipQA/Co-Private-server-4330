@@ -25,6 +25,15 @@ public partial class Monster
     private const ushort Whip = 440;
     private const byte EarringColor = 3;
 
+    private const int BossShards = 2;
+    private const int BossSuperDragonBallChance = 10;
+    private const byte ShardLevel = 70;
+    private const int ShardOdds = 3000;
+
+    // SnakeKing, NagaLord, Syren, CleansingDevil, Satan, FurySatan, ElfKing, HillMonsterKing, WingedSnakeKing,
+    // UltimatePluto, HawkBoss, RobberKing, EvilLord.
+    private static readonly HashSet<uint> Bosses = [3102, 3146, 3156, 5058, 3635, 3644, 3646, 4032, 4034, 4036, 5059, 8314, 8315, 8319];
+
     private static readonly ushort[] Necklaces = [120, 121];
     private static readonly ushort[] Rings = [150, 151, 152];
     private static readonly ushort[] Headwear = [111, 113, 114, Earrings, 118];
@@ -66,10 +75,38 @@ public partial class Monster
             DropTreasures(looter, now);
         }
 
+        DropLegendaryMaterials(looter, now);
+
         if (Random.Next(GemOddsFor(killer)) == GemJackpot)
         {
             var roll = Random.Next(1000);
             Drop(GemOdds.First(odds => roll < odds.Below).Gem, looter, now);
+        }
+    }
+
+    // Bosses drop Dragon Shards (the Legend Orb material); strong ordinary monsters drop them very rarely.
+    private void DropLegendaryMaterials(Player? looter, DateTimeOffset now)
+    {
+        if (Owner is not null || MonsterType.IsGuardian)
+        {
+            return;
+        }
+
+        if (Bosses.Contains(MonsterType.Id))
+        {
+            for (var shard = 0; shard < BossShards; shard++)
+            {
+                Drop(Player.DragonShard, looter, now);
+            }
+
+            if (Random.Next(100) < BossSuperDragonBallChance)
+            {
+                Drop(Player.SuperDragonBall, looter, now);
+            }
+        }
+        else if (Level >= ShardLevel && Random.Next(ShardOdds) == 0)
+        {
+            Drop(Player.DragonShard, looter, now);
         }
     }
 

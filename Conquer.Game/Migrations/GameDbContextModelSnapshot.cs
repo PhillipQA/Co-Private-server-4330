@@ -297,6 +297,9 @@ partial class GameDbContextModelSnapshot : ModelSnapshot
                 b.Property<long>("ItemTypeId")
                     .HasColumnType("bigint");
 
+                b.Property<bool>("Legendary")
+                    .HasColumnType("bit");
+
                 b.Property<byte>("Magic1")
                     .HasColumnType("tinyint");
 

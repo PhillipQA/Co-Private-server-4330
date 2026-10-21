@@ -87,16 +87,16 @@ public partial class Player
             .Select(w => (int)w.Type.AttackRange).ToList();
 
         return new(
-            MinAttack: Strength + worn.Sum(w => (w.Type.AttackMin + (w.Plus?.AttackMin ?? 0)) / w.Half),
-            MaxAttack: Strength + worn.Sum(w => (w.Type.AttackMax + (w.Plus?.AttackMax ?? 0)) / w.Half),
-            Defense: worn.Sum(w => w.Type.Defense + (w.Plus?.Defense ?? 0)),
-            MagicAttack: worn.Sum(w => w.Type.MagicAttack),
-            MagicDefense: worn.Sum(w => w.Type.MagicDefense),
+            MinAttack: Strength + worn.Sum(w => Legend(w.Item, w.Type.AttackMin + (w.Plus?.AttackMin ?? 0)) / w.Half),
+            MaxAttack: Strength + worn.Sum(w => Legend(w.Item, w.Type.AttackMax + (w.Plus?.AttackMax ?? 0)) / w.Half),
+            Defense: worn.Sum(w => Legend(w.Item, w.Type.Defense + (w.Plus?.Defense ?? 0))),
+            MagicAttack: worn.Sum(w => Legend(w.Item, w.Type.MagicAttack)),
+            MagicDefense: worn.Sum(w => Legend(w.Item, w.Type.MagicDefense)),
             Agility: Agility,
             Dodge: BaseDodge + worn.Sum(w => w.Type.Dodge + (w.Plus?.Dodge ?? 0)),
             Range: ranges.Count > 0 ? ranges.Sum() / ranges.Count : BareRange,
             AttackSpeed: Wielded(type => type.AttackSpeed, BareSpeed),
-            MaxHealth: Math.Max(0, BaseMaxHealth + worn.Sum(w => w.Type.Health + w.Item.Enchant + (w.Plus?.Health ?? 0))),
+            MaxHealth: Math.Max(0, BaseMaxHealth + worn.Sum(w => Legend(w.Item, w.Type.Health + (w.Plus?.Health ?? 0)) + w.Item.Enchant)),
             MaxMana: BaseMaxMana + worn.Sum(w => w.Type.Mana),
             Strength: Strength,
             AgilityBonus: worn.Where(w => w.Item.Position != ItemPosition.Left).Sum(w => w.Type.Agility + (w.Plus?.Agility ?? 0)) +
