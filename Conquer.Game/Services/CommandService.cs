@@ -35,7 +35,7 @@ public class CommandService(GameData data, World world, GameStore store, IHostAp
     private static readonly FrozenDictionary<string, string> Usages = new Dictionary<string, string>
     {
         ["/attr"] = "/attr {str|agi|vit|spi} {points}",
-        ["/autohunt"] = "/autohunt [off|skill name]",
+        ["/autohunt"] = "/autohunt [off|melee|skill name]",
         ["/avatar"] = "/avatar {id}",
         ["/ban"] = "/ban {player}",
         ["/dialog"] = "/dialog {id}",
