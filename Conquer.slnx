@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Conquer/Conquer.csproj" />
+  <Project Path="Conquer.Account/Conquer.Account.csproj" />
+  <Project Path="Conquer.Game/Conquer.Game.csproj" />
+</Solution>
