@@ -58,6 +58,8 @@ public partial class Player
             Mine(now);
         }
 
+        TickHunt(now);
+
         if (Target is not null && now >= NextAttack && !((AttackKind != InteractAction.Shoot || Arrows > 0) && Attack(Target, now)))
         {
             Target = null;

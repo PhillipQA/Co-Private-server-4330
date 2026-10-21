@@ -284,6 +284,7 @@ public record MsgAction : IMessage
                     break;
                 }
 
+                player.StopHunt("Autohunt stopped because you moved.");
                 player.Jump(DataX, DataY, this);
                 break;
 

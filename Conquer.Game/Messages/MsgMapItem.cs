@@ -12,8 +12,6 @@ public enum MapItemAction : uint
 
 public record MsgMapItem : IMessage
 {
-    private const uint PlentyOfMoney = 1000;
-
     public MsgMapItem()
     {
     }
@@ -72,47 +70,6 @@ public record MsgMapItem : IMessage
             return;
         }
 
-        if (drop.IsReservedFrom(player, world.UtcNow))
-        {
-            player.Tell("This item belongs to someone else for now.");
-            return;
-        }
-
-        if (drop.Item is null)
-        {
-            if (!player.Earn(drop.Money))
-            {
-                player.Tell("You cannot carry any more silver.");
-                return;
-            }
-
-            if (drop.Money >= PlentyOfMoney)
-            {
-                player.Send(new MsgAction
-                {
-                    Id = player.Id,
-                    X = player.X,
-                    Y = player.Y,
-                    Direction = (ushort)player.Direction,
-                    Data = drop.Money,
-                    Action = ActionType.GetMoney
-                });
-            }
-
-            player.Tell($"You have picked up {drop.Money} silver.");
-        }
-        else if (!player.Receive(drop.Item))
-        {
-            return;
-        }
-
-        map.Broadcast(player, new MsgMapItem
-        {
-            Id = player.Id,
-            X = player.X,
-            Y = player.Y,
-            Action = MapItemAction.Pick
-        }, self: false);
-        map.Remove(drop);
+        player.PickUp(drop, world.UtcNow);
     }
 }

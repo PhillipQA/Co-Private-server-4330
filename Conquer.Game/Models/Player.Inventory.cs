@@ -4,6 +4,7 @@ public partial class Player
 {
     private const int InventorySize = 40;
     private const uint Consumable = 1000000;
+    private const uint PlentyOfMoney = 1000;
 
     public IEnumerable<Item> Carried => Items.Where(item => item.StorageId is null);
     public IEnumerable<Item> Inventory => Carried.Where(item => item.Position == ItemPosition.Inventory);
@@ -168,6 +169,58 @@ public partial class Player
 
         AddHealth(potion.Health);
         AddMana(potion.Mana);
+        return true;
+    }
+
+    public bool PickUp(MapItem drop, DateTimeOffset now)
+    {
+        if (Map is not { } map || !IsAlive || (drop.X, drop.Y) != (X, Y))
+        {
+            return false;
+        }
+
+        if (drop.IsReservedFrom(this, now))
+        {
+            Tell("This item belongs to someone else for now.");
+            return false;
+        }
+
+        if (drop.Item is null)
+        {
+            if (!Earn(drop.Money))
+            {
+                Tell("You cannot carry any more silver.");
+                return false;
+            }
+
+            if (drop.Money >= PlentyOfMoney)
+            {
+                Send(new MsgAction
+                {
+                    Id = Id,
+                    X = X,
+                    Y = Y,
+                    Direction = (ushort)Direction,
+                    Data = drop.Money,
+                    Action = ActionType.GetMoney
+                });
+            }
+
+            Tell($"You have picked up {drop.Money} silver.");
+        }
+        else if (!Receive(drop.Item))
+        {
+            return false;
+        }
+
+        map.Broadcast(this, new MsgMapItem
+        {
+            Id = Id,
+            X = X,
+            Y = Y,
+            Action = MapItemAction.Pick
+        }, self: false);
+        map.Remove(drop);
         return true;
     }
 

@@ -102,7 +102,7 @@ public record MsgTalk : IMessage
 
         if (words.StartsWith('/'))
         {
-            if (player.IsGm)
+            if (player.IsGm || CommandService.IsPublic(words))
             {
                 await commands.HandleAsync(player, words);
             }

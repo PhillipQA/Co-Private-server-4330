@@ -35,6 +35,7 @@ public class CommandService(GameData data, World world, GameStore store, IHostAp
     private static readonly FrozenDictionary<string, string> Usages = new Dictionary<string, string>
     {
         ["/attr"] = "/attr {str|agi|vit|spi} {points}",
+        ["/autohunt"] = "/autohunt [off|skill name]",
         ["/avatar"] = "/avatar {id}",
         ["/ban"] = "/ban {player}",
         ["/dialog"] = "/dialog {id}",
@@ -64,6 +65,12 @@ public class CommandService(GameData data, World world, GameStore store, IHostAp
         ["/xp"] = "/xp {0-100}"
     }.ToFrozenDictionary();
 
+    // Commands every player may use; everything else is GM-only.
+    private static readonly FrozenSet<string> PublicCommands = new[] { "/autohunt", "/ah" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
+    public static bool IsPublic(string command) =>
+        command.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries) is [var name, ..] && PublicCommands.Contains(name);
+
     public async Task HandleAsync(Player player, string command)
     {
         var args = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -82,6 +89,10 @@ public class CommandService(GameData data, World world, GameStore store, IHostAp
 
                 player.RecalculateStats();
                 player.Send(new MsgUserAttrib(player.Id, attribute, points));
+                break;
+
+            case "/autohunt" or "/ah":
+                player.ToggleHunt(args.Length > 1 ? string.Join(' ', args[1..]) : null);
                 break;
 
             case "/avatar" when Number(1) is { } avatar:

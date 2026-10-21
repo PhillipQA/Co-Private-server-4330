@@ -38,6 +38,7 @@ public record MsgWalk : IMessage
         }
         else if (player.Id == Id)
         {
+            player.StopHunt("Autohunt stopped because you moved.");
             player.Walk(direction, this);
         }
         else if (!World.IsPetId(Id))
