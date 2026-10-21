@@ -409,7 +409,15 @@ public partial class Player
             Action = ActionType.Jump
         };
 
-        return Jump(x, y, jump);
+        if (!Jump(x, y, jump))
+        {
+            return false;
+        }
+
+        // The 4330 client may ignore a jump packet for its own character, so also tell it where the hero now
+        // stands. KickBack makes the client place the hero at the coordinates sent (the new position).
+        Send(Act(ActionType.KickBack));
+        return true;
     }
 
     private void DrinkIfNeeded()
