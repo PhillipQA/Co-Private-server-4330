@@ -102,9 +102,13 @@ public record MsgTalk : IMessage
 
         if (words.StartsWith('/'))
         {
-            if (player.IsGm || CommandService.IsPublic(words))
+            // Some clients append junk bytes after the typed text; commands are plain ASCII, so stop at the first
+            // character that isn't.
+            var command = new string(words.TakeWhile(c => c is >= ' ' and <= '~').ToArray()).TrimEnd();
+
+            if (player.IsGm || CommandService.IsPublic(command))
             {
-                await commands.HandleAsync(player, words);
+                await commands.HandleAsync(player, command);
             }
 
             return;
