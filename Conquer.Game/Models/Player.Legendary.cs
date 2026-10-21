@@ -17,8 +17,6 @@ public partial class Player
     public const int SuperForgeChance = 30;
     public const int LegendaryBonusPercent = 20;
 
-    private const int SuperQuality = 9;
-
     private static readonly ItemPosition[] ForgeableSlots =
     [
         ItemPosition.Head, ItemPosition.Necklace, ItemPosition.Armor, ItemPosition.Right, ItemPosition.Left, ItemPosition.Ring,
@@ -34,7 +32,7 @@ public partial class Player
     public IReadOnlyList<Item> ForgeableGear() => ForgeableSlots
         .Select(ItemAt)
         .OfType<Item>()
-        .Where(item => !item.Legendary && TypeOf(item) is { IsArrow: false } type && type.Quality == SuperQuality &&
+        .Where(item => !item.Legendary && TypeOf(item) is { IsArrow: false } type && type.Quality == (int)SuperQuality &&
                        type.IsEquipment)
         .ToList();
 
