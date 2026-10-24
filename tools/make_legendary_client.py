@@ -25,12 +25,14 @@ NAME = slice(4, 20)
 DESCRIPTION = slice(76, 204)
 PRICE = 36
 
+MAX_DESCRIPTION = 93
+
 EXCEPTIONS = {410309: 410300, 421309: 421302, 500309: 500302}  # same as LegendaryLook.Exceptions
 
-STATS = "Legendary:~+20%~Atk,~Def,~Magic~and~HP."
+STATS = "Legendary:~+20%~item~stats."
 TEXT = {
     "weapon": "12%~chance~to~strike~again~for~+50%~damage.",
-    "ring": "Lifesteal~5%~vs~players,~0.5%~vs~monsters~(max~2000).~-25%~stamina.~3x~passive~reach.",
+    "ring": "Lifesteal~5%~(0.5%~monsters).~-25%~stamina.~3x~passive~reach.",
     "necklace": "15%~chance~on~hit~to~restore~5%~mana.",
     "guard": "4%~chance~per~piece~to~heal~6%~HP~when~struck.",
 }
@@ -86,7 +88,8 @@ def make_record(template, item_id, name, description, price=None):
     record = bytearray(template)
     struct.pack_into("<I", record, 0, item_id)
     encoded_name, encoded_description = name.encode("latin1"), description.encode("latin1")
-    assert len(encoded_name) <= 15 and len(encoded_description) <= 127, (name, len(encoded_description))
+    # The client crashes on tooltips longer than its own longest description (93 characters).
+    assert len(encoded_name) <= 15 and len(encoded_description) <= MAX_DESCRIPTION, (name, len(encoded_description))
     record[NAME] = encoded_name.ljust(16, b"\0")
     record[DESCRIPTION] = encoded_description.ljust(128, b"\0")
     if price is not None:
