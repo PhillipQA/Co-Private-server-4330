@@ -21,7 +21,7 @@ public static class ItemBlock
 
     public static void Write(Span<byte> block, Item item, byte action)
     {
-        WriteUInt32LittleEndian(block, item.ItemTypeId);
+        WriteUInt32LittleEndian(block, LegendaryLook.ShownTypeId(item));
         WriteUInt16LittleEndian(block[4..], item.Durability);
         WriteUInt16LittleEndian(block[6..], item.MaxDurability);
         block[8] = action;

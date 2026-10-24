@@ -38,7 +38,7 @@ public record MsgPackage : IMessage
         {
             var entry = buffer[(16 + i * 20)..];
             WriteUInt32LittleEndian(entry, item.Id);
-            WriteUInt32LittleEndian(entry[4..], item.ItemTypeId);
+            WriteUInt32LittleEndian(entry[4..], LegendaryLook.ShownTypeId(item));
             entry[8] = item.Ident;
             entry[9] = (byte)item.Gem1;
             entry[10] = (byte)item.Gem2;

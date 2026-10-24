@@ -89,7 +89,7 @@ public partial class Player
         }
 
         item.Legendary = true;
-        RecalculateStats();
+        ItemChanged(item);
         World.Announce($"{Name} has forged a Legendary {NameOf(item)}!");
         return ForgeResult.Succeeded;
     }
