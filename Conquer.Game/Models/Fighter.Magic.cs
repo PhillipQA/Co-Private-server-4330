@@ -85,7 +85,7 @@ public abstract partial class Fighter
             : spell.WeaponHit != 0 || spell.WeaponSubtype != 0 || spell.Sort == MagicSort.Striking ? Strike.Melee
             : Strike.Magic;
 
-        CurrentSpell = spell;
+        _currentSpell = spell;
         List<(Fighter Victim, int Amount, int Reflected)> hits;
 
         try
@@ -102,7 +102,7 @@ public abstract partial class Fighter
         }
         finally
         {
-            CurrentSpell = null;
+            _currentSpell = null;
         }
 
         if (spell.Offensive != 0)
@@ -210,7 +210,10 @@ public abstract partial class Fighter
     protected virtual bool PayCost(MagicType spell) => true;
 
     // The spell this fighter is resolving right now (null outside spell damage), so defenders can tell area damage apart.
-    public MagicType? CurrentSpell { get; private set; }
+    // A plain field behind a read-only property, so the database mapping ignores it.
+    private MagicType? _currentSpell;
+
+    public MagicType? CurrentSpell => _currentSpell;
 
     // How far an area spell reaches for this fighter, in percent of normal.
     protected virtual int AreaReachPercent(MagicType spell) => 100;
