@@ -354,6 +354,11 @@ public record MsgAction : IMessage
                 {
                     player.Send(new MsgItemInfo(item, ItemInfoAction.OtherPlayerEquipment) { ItemId = Data });
                 }
+
+                if (world.Players.GetValueOrDefault(Data) is { } inspected && inspected != player && inspected.LegendaryGear().Count > 0)
+                {
+                    inspected.ShowLegendaryGear(player);
+                }
                 break;
 
             case ActionType.AbortTransform:

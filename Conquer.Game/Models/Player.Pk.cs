@@ -73,6 +73,8 @@ public partial class Player
 
     private void OnPlayerKill(Player victim, DateTimeOffset now)
     {
+        OnLegendaryPlayerKill();
+
         if (!victim.Is(PlayerStatus.RedName | PlayerStatus.BlackName) && Is(PlayerStatus.BlackName))
         {
             World.Outlaw(this);

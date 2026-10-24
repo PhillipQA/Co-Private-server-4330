@@ -73,6 +73,8 @@ public record Item
     public byte Bless { get; set; }
     public byte Enchant { get; set; }
     public bool Legendary { get; set; }
+    public int Affix1 { get; set; }
+    public int Affix2 { get; set; }
 
     public static Item Of(ItemType type) => new()
     {

@@ -13,6 +13,7 @@ public partial class Player
 
     public void Arrive(Map map, DateTimeOffset now)
     {
+        EnsureLegendaryAffixes();
         RecalculateStats();
         map.Add(this, X, Y);
         Protect(now);
@@ -96,6 +97,7 @@ public partial class Player
 
         Booth?.Close();
         EndProtection();
+        MarkMoved();
 
         var (dx, dy) = direction.Step();
 
@@ -133,6 +135,7 @@ public partial class Player
             Action = ActionType.Synchro
         }, self: false);
         Map.Shift(this, x, y);
+        MarkMoved();
         return true;
     }
 
@@ -157,6 +160,7 @@ public partial class Player
         Interrupt();
         Booth?.Close();
         EndProtection();
+        MarkMoved();
         return Map.Move(this, x, y, because);
     }
 

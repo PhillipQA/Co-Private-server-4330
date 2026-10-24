@@ -86,7 +86,7 @@ public partial class Player
         var ranges = worn.Where(w => w.Item.Position is ItemPosition.Right or ItemPosition.Left && w.Type.AttackRange > 0)
             .Select(w => (int)w.Type.AttackRange).ToList();
 
-        return new(
+        return WithLegendaryStats(new(
             MinAttack: Strength + worn.Sum(w => Legend(w.Item, w.Type.AttackMin + (w.Plus?.AttackMin ?? 0)) / w.Half),
             MaxAttack: Strength + worn.Sum(w => Legend(w.Item, w.Type.AttackMax + (w.Plus?.AttackMax ?? 0)) / w.Half),
             Defense: worn.Sum(w => Legend(w.Item, w.Type.Defense + (w.Plus?.Defense ?? 0))),
@@ -110,6 +110,6 @@ public partial class Player
             RainbowGems: Gems(3, RainbowGem),
             VioletGems: Gems(5, VioletGem),
             MoonGems: Gems(6, MoonGem),
-            ArmorQuality: (int)(ItemAt(ItemPosition.Armor)?.ItemTypeId % 10 ?? 0));
+            ArmorQuality: (int)(ItemAt(ItemPosition.Armor)?.ItemTypeId % 10 ?? 0)));
     }
 }

@@ -1,0 +1,36 @@
+From 445bc30a8b5d186b29f977b457bc25412acd267b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 21 Oct 2026 20:25:28 +0800
+Subject: [PATCH] Autohunt: snap the client's own character to its new position
+ after each jump
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_012QZ2EofieBFmMsHF9Yardw
+---
+ Conquer.Game/Models/Player.AutoHunt.cs | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/Conquer.Game/Models/Player.AutoHunt.cs b/Conquer.Game/Models/Player.AutoHunt.cs
+index 6420810..6f6c42c 100644
+--- a/Conquer.Game/Models/Player.AutoHunt.cs
++++ b/Conquer.Game/Models/Player.AutoHunt.cs
+@@ -409,7 +409,15 @@ public partial class Player
+             Action = ActionType.Jump
+         };
+ 
+-        return Jump(x, y, jump);
++        if (!Jump(x, y, jump))
++        {
++            return false;
++        }
++
++        // The 4330 client may ignore a jump packet for its own character, so also tell it where the hero now
++        // stands. KickBack makes the client place the hero at the coordinates sent (the new position).
++        Send(Act(ActionType.KickBack));
++        return true;
+     }
+ 
+     private void DrinkIfNeeded()
+-- 
+2.43.0
+

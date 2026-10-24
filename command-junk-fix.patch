@@ -1,0 +1,34 @@
+From 8f25a3057d9ea22a7639f1271bffda0499fe9740 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 21 Oct 2026 21:03:18 +0800
+Subject: [PATCH] Ignore junk characters after chat commands
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_012QZ2EofieBFmMsHF9Yardw
+---
+ Conquer.Game/Messages/MsgTalk.cs | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/Conquer.Game/Messages/MsgTalk.cs b/Conquer.Game/Messages/MsgTalk.cs
+index 68e16df..928b94b 100644
+--- a/Conquer.Game/Messages/MsgTalk.cs
++++ b/Conquer.Game/Messages/MsgTalk.cs
+@@ -102,9 +102,13 @@ public record MsgTalk : IMessage
+ 
+         if (words.StartsWith('/'))
+         {
+-            if (player.IsGm || CommandService.IsPublic(words))
++            // Some clients append junk bytes after the typed text; commands are plain ASCII, so stop at the first
++            // character that isn't.
++            var command = new string(words.TakeWhile(c => c is >= ' ' and <= '~').ToArray()).TrimEnd();
++
++            if (player.IsGm || CommandService.IsPublic(command))
+             {
+-                await commands.HandleAsync(player, words);
++                await commands.HandleAsync(player, command);
+             }
+ 
+             return;
+-- 
+2.43.0
+

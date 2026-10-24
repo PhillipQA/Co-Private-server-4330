@@ -1,0 +1,36 @@
+From 6cadcd9f133794354955953fc4b17ab49dc83eb7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 21 Oct 2026 20:57:52 +0800
+Subject: [PATCH] Legendary: reuse the existing SuperQuality constant
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_012QZ2EofieBFmMsHF9Yardw
+---
+ Conquer.Game/Models/Player.Legendary.cs | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/Conquer.Game/Models/Player.Legendary.cs b/Conquer.Game/Models/Player.Legendary.cs
+index 6afdf26..04f3d21 100644
+--- a/Conquer.Game/Models/Player.Legendary.cs
++++ b/Conquer.Game/Models/Player.Legendary.cs
+@@ -17,8 +17,6 @@ public partial class Player
+     public const int SuperForgeChance = 30;
+     public const int LegendaryBonusPercent = 20;
+ 
+-    private const int SuperQuality = 9;
+-
+     private static readonly ItemPosition[] ForgeableSlots =
+     [
+         ItemPosition.Head, ItemPosition.Necklace, ItemPosition.Armor, ItemPosition.Right, ItemPosition.Left, ItemPosition.Ring,
+@@ -34,7 +32,7 @@ public partial class Player
+     public IReadOnlyList<Item> ForgeableGear() => ForgeableSlots
+         .Select(ItemAt)
+         .OfType<Item>()
+-        .Where(item => !item.Legendary && TypeOf(item) is { IsArrow: false } type && type.Quality == SuperQuality &&
++        .Where(item => !item.Legendary && TypeOf(item) is { IsArrow: false } type && type.Quality == (int)SuperQuality &&
+                        type.IsEquipment)
+         .ToList();
+ 
+-- 
+2.43.0
+

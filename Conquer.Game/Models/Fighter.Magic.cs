@@ -85,12 +85,25 @@ public abstract partial class Fighter
             : spell.WeaponHit != 0 || spell.WeaponSubtype != 0 || spell.Sort == MagicSort.Striking ? Strike.Melee
             : Strike.Magic;
 
-        var hits = Targets(spell, target, x, y).Where(victim => Affects(spell, victim, now))
-            .Select(victim => (Victim: victim, Amount: Amount(spell, strike, victim)))
-            .Select(hit => spell.Damages && hit.Amount > 0 && hit.Victim.Reflection() is > 0 and var cap
-                ? (hit.Victim, Amount: 0, Reflected: Math.Min(hit.Amount, cap))
-                : (hit.Victim, hit.Amount, Reflected: 0))
-            .ToList();
+        CurrentSpell = spell;
+        List<(Fighter Victim, int Amount, int Reflected)> hits;
+
+        try
+        {
+            hits = Targets(spell, target, x, y)
+                .Concat(spell.Sort == MagicSort.Buffing ? ExtraBuffTargets(spell) : [])
+                .Distinct()
+                .Where(victim => Affects(spell, victim, now))
+                .Select(victim => (Victim: victim, Amount: Amount(spell, strike, victim)))
+                .Select(hit => spell.Damages && hit.Amount > 0 && !IgnoresReflection && hit.Victim.Reflection() is > 0 and var cap
+                    ? (hit.Victim, Amount: 0, Reflected: Math.Min(hit.Amount, cap))
+                    : (hit.Victim, hit.Amount, Reflected: 0))
+                .ToList();
+        }
+        finally
+        {
+            CurrentSpell = null;
+        }
 
         if (spell.Offensive != 0)
         {
@@ -196,6 +209,20 @@ public abstract partial class Fighter
 
     protected virtual bool PayCost(MagicType spell) => true;
 
+    // The spell this fighter is resolving right now (null outside spell damage), so defenders can tell area damage apart.
+    public MagicType? CurrentSpell { get; private set; }
+
+    // How far an area spell reaches for this fighter, in percent of normal.
+    protected virtual int AreaReachPercent(MagicType spell) => 100;
+
+    protected virtual double FanHalfWidthFor(MagicType spell) => FanHalfWidth;
+
+    protected virtual int AdjustSpellAmount(MagicType spell, Strike strike, Fighter victim, int amount) => amount;
+
+    protected virtual IEnumerable<Fighter> ExtraBuffTargets(MagicType spell) => [];
+
+    protected virtual double AdjustBuffPower(MagicType spell, double power) => power;
+
     protected virtual void OnPracticed(MagicType spell, double practice, double experience)
     {
     }
@@ -204,6 +231,8 @@ public abstract partial class Fighter
     {
         var nearby = Map!.InRange(this).OfType<Fighter>();
         var (dx, dy) = target is null ? (x - X, y - Y) : (target.X - X, target.Y - Y);
+        var reach = AreaReachPercent(spell);
+        var halfWidth = FanHalfWidthFor(spell);
 
         return spell.Sort switch
         {
@@ -211,9 +240,9 @@ public abstract partial class Fighter
             MagicSort.Heal when spell.MultiTarget != 0 => Teammates(),
             _ when !spell.IsArea && spell.Target == SelfOnlyTarget => [this],
             _ when !spell.IsArea => target is null ? [] : [target],
-            MagicSort.Fan => nearby.Where(other => DistanceTo(other) <= Math.Min(spell.Range + FanReach, ReachTo(other)) && InFan(other, dx, dy)),
-            MagicSort.Bomb => Map.Around(x, y, spell.Range).OfType<Fighter>().Where(other => other != this && InBurst(other, x, y, spell.Range)),
-            MagicSort.Line => Line(dx, dy, spell.Range).Where(cell => Map.InBounds(cell.X, cell.Y) &&
+            MagicSort.Fan => nearby.Where(other => DistanceTo(other) <= Math.Min(spell.Range + FanReach, ReachTo(other)) * reach / 100 && InFan(other, dx, dy, halfWidth)),
+            MagicSort.Bomb => Map.Around(x, y, spell.Range * reach / 100).OfType<Fighter>().Where(other => other != this && InBurst(other, x, y, spell.Range * reach / 100)),
+            MagicSort.Line => Line(dx, dy, spell.Range * reach / 100).Where(cell => Map.InBounds(cell.X, cell.Y) &&
                     Math.Abs(Map.Cell(cell.X, cell.Y).Altitude - Map.Cell(X, Y).Altitude) < LineClimb)
                 .Select(cell => Map.Around(cell.X, cell.Y, 0).OfType<Fighter>().FirstOrDefault()).OfType<Fighter>(),
             _ => []
@@ -229,7 +258,7 @@ public abstract partial class Fighter
             ? team.Members.Where(member => member.Map == Map && DistanceTo(member) <= Map.ViewRange)
             : [this];
 
-    private bool InFan(Entity other, int dx, int dy)
+    private bool InFan(Entity other, int dx, int dy, double halfWidth)
     {
         if (dx == 0 && dy == 0 || other.X == X && other.Y == Y)
         {
@@ -237,7 +266,7 @@ public abstract partial class Fighter
         }
 
         var delta = Math.Abs(Math.Atan2(other.Y - Y, other.X - X) - Math.Atan2(dy, dx));
-        return delta <= FanHalfWidth || delta >= 2 * Math.PI - FanHalfWidth;
+        return delta <= halfWidth || delta >= 2 * Math.PI - halfWidth;
     }
 
     private List<(int X, int Y)> Line(int dx, int dy, int range)
@@ -270,7 +299,9 @@ public abstract partial class Fighter
         victim.Is(PlayerStatus.Flying) && !Is(PlayerStatus.Flying) && spell.WeaponHit != 0 && spell.WeaponSubtype != ItemType.Bow ||
         spell.IsArea && victim is Monster { MonsterType: var type } && type.Is(Behavior.Guard);
 
-    private int Amount(MagicType spell, Strike strike, Fighter victim) => spell.Sort switch
+    private int Amount(MagicType spell, Strike strike, Fighter victim) => AdjustSpellAmount(spell, strike, victim, BaseAmount(spell, strike, victim));
+
+    private int BaseAmount(MagicType spell, Strike strike, Fighter victim) => spell.Sort switch
     {
         MagicSort.Heal or MagicSort.AddMana => spell.Power,
         MagicSort.DispatchingXp => DispatchedXp,
@@ -406,7 +437,7 @@ public abstract partial class Fighter
             }
         }
 
-        victim.ApplyEffect(status, spell.Power > PowerIsPercent ? (spell.Power - PowerIsPercent) / 100.0 : 1,
+        victim.ApplyEffect(status, AdjustBuffPower(spell, spell.Power > PowerIsPercent ? (spell.Power - PowerIsPercent) / 100.0 : 1),
             now.AddSeconds(spell.DurationSeconds * Math.Max(1u, spell.ActiveTimes)));
         return true;
     }

@@ -63,6 +63,12 @@ public partial class Monster
     private void Drop(Fighter? killer, Player? looter, DateTimeOffset now)
     {
         DropPiles(looter, now);
+
+        // Legendary "Silver and item drops" attribute: a chance at a second round of silver and gear.
+        if (looter is { LegendaryDropBonus: > 0 and var bonus } && Random.Next(100) < bonus)
+        {
+            DropPiles(looter, now);
+        }
         DropRareGear(looter, now);
 
         if (Random.Next(100) < PotionChance)

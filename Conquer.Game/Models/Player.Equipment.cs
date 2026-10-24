@@ -153,6 +153,12 @@ public partial class Player
         Send(new MsgItem { Id = item.Id, Data = (uint)position, Action = ItemAction.Equip });
         RecalculateStats();
         Map?.Broadcast(this, Spawn, false);
+
+        if (item.Legendary)
+        {
+            Tell(DescribeLegendary(item), TalkChannel.System);
+        }
+
         return true;
     }
 

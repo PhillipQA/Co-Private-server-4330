@@ -13,7 +13,7 @@ It adds:
     The server sends the twin's ID for Legendary items (see Conquer.Game/Models/LegendaryLook.cs).
 
 Run it on the client's ORIGINAL files; running it twice on its own output is harmless (existing IDs are skipped).
-If you change the Legendary numbers in Player.LegendaryEffects.cs / Player.Legendary.cs, update TEXT below and rerun.
+If you change the Legendary numbers in Player.LegendaryEffects.cs / Player.Legendary.cs, update TEXT and kind_of below and rerun.
 """
 import re
 import struct
@@ -24,17 +24,30 @@ RECORD = 204
 NAME = slice(4, 20)
 DESCRIPTION = slice(76, 204)
 PRICE = 36
+REQUIRED_PROFESSION = 20
 
 MAX_DESCRIPTION = 93
 
 EXCEPTIONS = {410309: 410300, 421309: 421302, 500309: 500302}  # same as LegendaryLook.Exceptions
 
-STATS = "Legendary:~+20%~item~stats."
-TEXT = {
-    "weapon": "12%~chance~to~strike~again~for~+50%~damage.",
-    "ring": "Lifesteal~5%~(0.5%~monsters).~-25%~stamina.~3x~passive~reach.",
-    "necklace": "15%~chance~on~hit~to~restore~5%~mana.",
-    "guard": "4%~chance~per~piece~to~heal~6%~HP~when~struck.",
+TEXT = {  # tooltip text per kind of item; keep in step with Player.LegendaryEffects.cs (max 93 characters)
+    "weapon": "Legendary:~Hits~make~the~target~bleed~for~30%~extra~damage~over~3~seconds.",
+    "bag": "Legendary:~+30%~spell~area,~-50%~mana~cost,~+200%~healing.",
+    "necklace": "Legendary:~+15%~max~HP.~HP/MP~potions~restore~twice~as~much.",
+    "bracelet": "Legendary:~10%~magic~penetration.~+1%~magic~damage~per~400~max~mana.",
+    "ring": "Legendary:~Lifesteal~5%~(0.5%~monsters).~-25%~stamina.~3x~passive~reach.",
+    "boots": "Legendary:~Ignore~one~player~attack~every~10~seconds.",
+    "shield": "Legendary:~-33%~magic~damage~and~-50%~area~damage~taken.",
+    "taoist_robe": "Legendary:~+3000~mana.~Above~30%~mana,~half~of~damage~taken~drains~mana.",
+    "warrior_armor": "Legendary:~Stand~still:~up~to~-45%~physical~damage~and~fast~regen.",
+    "archer_coat": "Legendary:~Fan~skills~hit~270~degrees~(360~flying).~+25~HP~per~Agility.",
+    "trojan_armor": "Legendary:~Spells~cost~HP,~not~mana.~Killing~a~player~refunds~stamina.",
+    "earring": "Legendary:~20-50%~less~magic~damage,~growing~while~not~hit~by~magic.",
+    "dress": "Legendary:~+50%~experience.",
+    "warrior_helmet": "Legendary:~Absorb~30%~of~damage~to~nearby~teammates~(you~take~half).",
+    "archer_hat": "Legendary:~+35%~Scatter.~Team~pole~damage~+25%~archers,~+10%~others.",
+    "taoist_cap": "Legendary:~+50%~buffs,~cast~on~team.~Reflect~immune.~Tornado~+3%~max~HP.",
+    "trojan_coronet": "Legendary:~+60%~stamina~regen~(+30%~team).~+10%~FastBlade/ScentSword.",
 }
 
 MATERIALS = [
@@ -53,15 +66,17 @@ def display_id(item_id):
     return EXCEPTIONS.get(item_id, item_id - 8)
 
 
-def power_text(item_id):
+def kind_of(item_id, required_profession):
+    """Same mapping as Player.KindOf in Player.LegendaryEffects.cs."""
     sub = item_id // 1000
-    if 120 <= sub <= 121:
-        return TEXT["necklace"]
-    if 150 <= sub <= 152:
-        return TEXT["ring"]
-    if 400 <= sub <= 599:
-        return TEXT["weapon"]
-    return TEXT["guard"]  # helmets, earrings, caps, armor, boots, shields
+    if sub == 112:
+        sub = {15: 118, 25: 111, 45: 113}.get(required_profession, 114 if required_profession >= 100 else 0)
+    return {
+        111: "warrior_helmet", 113: "archer_hat", 114: "taoist_cap", 118: "trojan_coronet", 117: "earring",
+        120: "necklace", 121: "bag", 130: "trojan_armor", 135: "trojan_armor", 131: "warrior_armor", 136: "warrior_armor",
+        132: "dress", 137: "dress", 133: "archer_coat", 138: "archer_coat", 134: "taoist_robe", 139: "taoist_robe",
+        150: "ring", 151: "ring", 152: "bracelet", 160: "boots", 900: "shield",
+    }.get(sub, "weapon" if 400 <= sub <= 599 else None)
 
 
 def legendary_name(name):
@@ -137,7 +152,10 @@ def main(client, out):
             continue
         template = by_id[item_id]
         name = template[NAME].split(b"\0")[0].decode("latin1")
-        record = make_record(template, twin, legendary_name(name), f"{STATS}~{power_text(item_id)}")
+        kind = kind_of(item_id, template[REQUIRED_PROFESSION])
+        if kind is None:
+            continue
+        record = make_record(template, twin, legendary_name(name), TEXT[kind])
         ids.append(twin)
         records.append(record)
         by_id[twin] = record

@@ -59,6 +59,7 @@ public partial class Player
         }
 
         TickHunt(now);
+        TickLegendaryAura(now);
 
         if (Target is not null && now >= NextAttack && !((AttackKind != InteractAction.Shoot || Arrows > 0) && Attack(Target, now)))
         {
@@ -276,7 +277,7 @@ public partial class Player
     private double ExperienceBonus =>
         Level >= MaxLevel ? 0
         : (100 + Stats.RainbowGems) / 100.0 * (ExperienceBoostTime > 0 && MapId != TrainingGround ? ExperienceBoost / 100.0 : 1) /
-          (Level >= HalvedExperienceLevel ? 2 : 1) / (Rebirths > 1 ? Rebirths * 1.5 : 1);
+          (Level >= HalvedExperienceLevel ? 2 : 1) / (Rebirths > 1 ? Rebirths * 1.5 : 1) * LegendaryExperience;
 
     protected override int Mastery =>
         Form is null && Worn(ItemPosition.Right) is { } weapon &&
@@ -437,6 +438,8 @@ public partial class Player
         {
             Sparkle();
         }
+
+        OnLegendaryHit(target, damage, blow);
 
         if (target is DynaNpc { IsPole: true })
         {

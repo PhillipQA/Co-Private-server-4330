@@ -66,7 +66,7 @@ public class CommandService(GameData data, World world, GameStore store, IHostAp
     }.ToFrozenDictionary();
 
     // Commands every player may use; everything else is GM-only.
-    private static readonly FrozenSet<string> PublicCommands = new[] { "/autohunt", "/ah" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+    private static readonly FrozenSet<string> PublicCommands = new[] { "/autohunt", "/ah", "/legend" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     public static bool IsPublic(string command) =>
         command.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries) is [var name, ..] && PublicCommands.Contains(name);
@@ -89,6 +89,19 @@ public class CommandService(GameData data, World world, GameStore store, IHostAp
 
                 player.RecalculateStats();
                 player.Send(new MsgUserAttrib(player.Id, attribute, points));
+                break;
+
+            case "/legend" when Word(1) == "debug":
+                player.Tell(player.ToggleLegendaryDebug()
+                    ? "Legendary debug on: each Legendary power will report in chat when it triggers."
+                    : "Legendary debug off.", TalkChannel.System);
+                break;
+
+            case "/legend":
+                player.ShowLegendaryGear(player);
+                player.Tell($"Your attack: {player.Stats.MinAttack}-{player.Stats.MaxAttack}, defense: {player.Stats.Defense}, " +
+                            $"magic: {player.Stats.MagicAttack}, max HP: {player.Stats.MaxHealth} (includes Legendary bonuses).",
+                    TalkChannel.System);
                 break;
 
             case "/autohunt" or "/ah":
@@ -150,7 +163,7 @@ public class CommandService(GameData data, World world, GameStore store, IHostAp
                 break;
 
             case "/item" when Find(Word(1), Number(2)) is { } type:
-                player.Give(type, item =>
+                var given = player.Give(type, item =>
                 {
                     item.Plus = (byte)(Number(3) ?? 0);
                     item.Ident = (byte)(Number(4) ?? 0);
@@ -161,6 +174,14 @@ public class CommandService(GameData data, World world, GameStore store, IHostAp
                     item.Magic1 = (byte)(Number(9) ?? item.Magic1);
                     item.Magic2 = (byte)(Number(10) ?? item.Magic2);
                 });
+
+                player.Tell(given is not null
+                    ? $"Gave {type.Name} ({type.Id}). If it isn't in your bag, your client's ini\\itemtype.dat doesn't list it."
+                    : $"Could not give {type.Name} ({type.Id}).");
+                break;
+
+            case "/item" when Word(1) is { } unknown:
+                player.Tell($"There is no item called {unknown}.");
                 break;
 
             case "/jail" when Word(1) is { } name:

@@ -167,8 +167,8 @@ public partial class Player
             return false;
         }
 
-        AddHealth(potion.Health);
-        AddMana(potion.Mana);
+        AddHealth(potion.Health * PotionPercent / 100);
+        AddMana(potion.Mana * PotionPercent / 100);
         return true;
     }
 

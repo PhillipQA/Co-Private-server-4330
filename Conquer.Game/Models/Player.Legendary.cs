@@ -15,7 +15,8 @@ public partial class Player
     public const int SupersPerOrb = 3;
     public const int ShardsPerOrb = 7;
     public const int SuperForgeChance = 30;
-    public const int LegendaryBonusPercent = 20;
+    // Legendary items get their own perk (Player.LegendaryEffects.cs); set this above 0 to also raise their stats.
+    public const int LegendaryBonusPercent = 0;
 
     private static readonly ItemPosition[] ForgeableSlots =
     [
@@ -89,8 +90,9 @@ public partial class Player
         }
 
         item.Legendary = true;
+        var grade = RollAffixes(item);
         ItemChanged(item);
-        World.Announce($"{Name} has forged a Legendary {NameOf(item)}!");
+        AnnounceRoll(item, grade, "forged");
         return ForgeResult.Succeeded;
     }
 }

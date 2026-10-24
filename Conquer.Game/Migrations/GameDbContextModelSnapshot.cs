@@ -276,6 +276,12 @@ partial class GameDbContextModelSnapshot : ModelSnapshot
                 b.Property<long>("Id")
                     .HasColumnType("bigint");
 
+                b.Property<int>("Affix1")
+                    .HasColumnType("int");
+
+                b.Property<int>("Affix2")
+                    .HasColumnType("int");
+
                 b.Property<byte>("Bless")
                     .HasColumnType("tinyint");
 

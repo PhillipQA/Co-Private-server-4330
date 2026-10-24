@@ -281,9 +281,15 @@ public partial class Player
     {
         var free = MapId == TrainingGround;
         var arrows = !free && spell.WeaponSubtype == ItemType.Bow && spell.Offensive != 0 ? spell.ArrowCost : 0;
-        var (mana, stamina) = free ? (0, 0) : (spell.ManaCost, spell.StaminaCost);
+        var (mana, stamina) = free ? (0, 0) : (LegendManaCost(spell), RingStaminaCost(spell));
+        var life = 0;
 
-        if (Form is not null && spell.Sort != MagicSort.Transforming || Mana < mana || Stamina < stamina ||
+        if (mana > 0 && SpellsCostLife)
+        {
+            (life, mana) = (mana, 0);
+        }
+
+        if (Form is not null && spell.Sort != MagicSort.Transforming || Mana < mana || Stamina < stamina || life > 0 && Health <= life ||
             spell.XpSkill == 1 && !Is(PlayerStatus.XpFull) || spell.WeaponSubtype != 0 && !Wields(spell.WeaponSubtype) || Arrows < arrows)
         {
             return false;
@@ -295,6 +301,7 @@ public partial class Player
         }
 
         AddMana(-mana);
+        AddHealth(-life);
         SetStamina(Stamina - stamina);
 
         if (spell.XpSkill == 1)
@@ -412,7 +419,7 @@ public partial class Player
             now - _energized >= (sitting ? SittingEnergyInterval : StaminaInterval))
         {
             _energized = now;
-            SetStamina(Stamina + (sitting ? SittingStamina : StandingStamina));
+            SetStamina(Stamina + (sitting ? SittingStamina : StandingStamina) * StaminaRegenPercent / 100);
         }
 
         if (now >= _nextHeal)

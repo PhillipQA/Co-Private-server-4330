@@ -57,9 +57,9 @@ public abstract partial class Fighter
             return true;
         }
 
-        var damage = DamageTo(target, StrikeKind, normal: true);
+        var damage = AdjustAttackDamage(target, DamageTo(target, StrikeKind, normal: true));
 
-        if (target.Reflection() is > 0 and var cap)
+        if (!IgnoresReflection && target.Reflection() is > 0 and var cap)
         {
             var action = StrikeKind == Strike.Magic ? InteractAction.ReflectMagic : InteractAction.ReflectWeapon;
             Reflect(target, Math.Min(damage, cap), action, now);
@@ -155,7 +155,7 @@ public abstract partial class Fighter
         Die(killer, now);
     }
 
-    protected int DamageTo(Fighter target, Strike strike, int power = 0, bool powersAttack = false, bool normal = false) => target.MitigateDamage(this,
+    protected int DamageTo(Fighter target, Strike strike, int power = 0, bool powersAttack = false, bool normal = false) => target.MitigateDamage(this, strike,
         strike == Strike.Magic ? MagicDamageTo(target, power) : WeaponDamageTo(target, strike == Strike.Bow, power, powersAttack, normal));
 
     private int WeaponDamageTo(Fighter target, bool bow, int power, bool powersAttack, bool normal)
@@ -192,20 +192,29 @@ public abstract partial class Fighter
     {
         var damage = this is Player ? Adjust(Stats.MagicAttack, power) : Stats.MagicAttack;
         damage = target is Player ? damage - damage / 4 : (int)(damage * DamageGap(target));
-        damage -= damage * Math.Min(target.Stats.MagicDefense, MaxMagicDefense) / 100;
+        damage -= damage * Math.Max(0, Math.Min(target.Stats.MagicDefense, MaxMagicDefense) - MagicPenetration) / 100;
         damage += damage * Stats.PhoenixGems / 100 + Stats.MagicBonus;
         damage += Stats.PhoenixGems >= PhoenixFury ? damage / 20 : 0;
         damage = LuckyStrike(target) ? damage * 2 : damage;
         return Math.Max(0, damage - target.Stats.MagicBlock);
     }
 
-    private int MitigateDamage(Fighter attacker, int damage)
+    private int MitigateDamage(Fighter attacker, Strike strike, int damage)
     {
         damage -= damage / 2 * Math.Min(Stats.TortoiseGems, 100) / 100;
         damage *= attacker is Player && this is DynaNpc { IsPole: true } && Map?.War?.Owner is { Fund: 0 } ? UnfundedPoleDamage : 1;
         damage = LuckyEscape() ? 0 : damage * DamageTakenPercent(attacker) / 100;
-        return Math.Max(1, damage - damage * Math.Min(Stats.Bless, 100) / 100);
+        return AdjustIncomingDamage(attacker, strike, Math.Max(1, damage - damage * Math.Min(Stats.Bless, 100) / 100));
     }
+
+    // Hooks for equipment that changes combat (Legendary gear). The defaults change nothing.
+    protected virtual bool IgnoresReflection => false;
+
+    protected virtual int MagicPenetration => 0;
+
+    protected virtual int AdjustAttackDamage(Fighter target, int damage) => damage;
+
+    protected virtual int AdjustIncomingDamage(Fighter attacker, Strike strike, int damage) => damage;
 
     public virtual int DamageTakenPercent(Fighter attacker) => 100;
 

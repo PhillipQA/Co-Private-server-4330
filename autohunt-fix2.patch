@@ -1,0 +1,151 @@
+From 9e87a1611485cc1cdc9820be3f70dc576b87c482 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 21 Oct 2026 20:31:23 +0800
+Subject: [PATCH] Autohunt: pick each class's attack skill and auto-meditate
+
+Taoists cast Tornado, then Fire, then Thunder (best one they know and can afford);
+archers use Scatter. Taoists who know Meditation cast it when mana drops below 40%
+and only fall back to mana potions below 10%. /autohunt melee forces normal attacks.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_012QZ2EofieBFmMsHF9Yardw
+---
+ Conquer.Game/Models/Player.AutoHunt.cs  | 56 +++++++++++++++++++++----
+ Conquer.Game/Services/CommandService.cs |  2 +-
+ 2 files changed, 50 insertions(+), 8 deletions(-)
+
+diff --git a/Conquer.Game/Models/Player.AutoHunt.cs b/Conquer.Game/Models/Player.AutoHunt.cs
+index 6f6c42c..9e64f6c 100644
+--- a/Conquer.Game/Models/Player.AutoHunt.cs
++++ b/Conquer.Game/Models/Player.AutoHunt.cs
+@@ -13,6 +13,13 @@ public partial class Player
+     private const int WanderMax = 10;
+     private const int HealthPotionPercent = 50;
+     private const int ManaPotionPercent = 30;
++    private const int ManaPotionPercentWithMeditation = 10;
++    private const int MeditatePercent = 40;
++    private const ushort Meditation = 1195;
++
++    // Attack skills each class hunts with, best first. The first one the player knows and can pay for is cast.
++    private static readonly ushort[] TaoistHuntSpells = [1002, 1001, 1000]; // Tornado, Fire, Thunder
++    private static readonly ushort[] ArcherHuntSpells = [8001];              // Scatter
+ 
+     private static readonly TimeSpan HuntMoveInterval = TimeSpan.FromMilliseconds(600);
+     private static readonly TimeSpan WanderInterval = TimeSpan.FromSeconds(3);
+@@ -24,6 +31,7 @@ public partial class Player
+     private uint _huntMapId;
+     private (ushort X, ushort Y) _huntHome;
+     private ushort _huntSpell;
++    private bool _huntMelee;
+     private Monster? _prey;
+     private DateTimeOffset _nextHuntMove;
+     private DateTimeOffset _nextWander;
+@@ -58,13 +66,17 @@ public partial class Player
+                 StartHunt(null);
+                 break;
+ 
++            case "melee" or "physical":
++                StartHunt(null, melee: true);
++                break;
++
+             default:
+                 StartHunt(argument);
+                 break;
+         }
+     }
+ 
+-    private void StartHunt(string? skill)
++    private void StartHunt(string? skill, bool melee = false)
+     {
+         if (!IsAlive || Map is null)
+         {
+@@ -95,12 +107,14 @@ public partial class Player
+         _huntMapId = MapId;
+         _huntHome = (X, Y);
+         _huntSpell = spellType;
++        _huntMelee = melee;
+         _prey = null;
+         _huntSkipped.Clear();
+         _warnedNoPotions = false;
+ 
+-        var with = spellType == 0 ? "" : $" using {Known(spellType)?.Name}";
+-        Tell($"Autohunt started{with}. Type /autohunt again or move to stop.", TalkChannel.System);
++        var with = PreferredHuntSpell() is { } preferred ? $"using {preferred.Name}" : "using physical attacks";
++        var meditating = !_huntMelee && KnownMagic(Meditation) is not null ? ", meditating when mana is low" : "";
++        Tell($"Autohunt started {with}{meditating}. Type /autohunt again or move to stop.", TalkChannel.System);
+     }
+ 
+     public void StopHunt(string? reason = null)
+@@ -167,7 +181,7 @@ public partial class Player
+ 
+         DrinkIfNeeded();
+ 
+-        if (_casting is not null)
++        if (_casting is not null || TryMeditate(now))
+         {
+             return;
+         }
+@@ -237,8 +251,34 @@ public partial class Player
+         }
+     }
+ 
+-    private MagicType? HuntSpell() =>
+-        _huntSpell != 0 && Known(_huntSpell) is { } spell && Mana >= spell.ManaCost && Stamina >= spell.StaminaCost ? spell : null;
++    private ushort[] HuntSpellChoices => _huntMelee ? []
++        : _huntSpell != 0 ? [_huntSpell]
++        : Profession >= Profession.InternTaoist ? TaoistHuntSpells
++        : Profession is >= Profession.InternArcher and <= Profession.ArcherMaster ? ArcherHuntSpells
++        : [];
++
++    // The skill autohunt would like to use, ignoring whether it can be paid for right now.
++    private MagicType? PreferredHuntSpell() => HuntSpellChoices
++        .Where(type => KnownMagic(type) is not null)
++        .Select(type => Known(type))
++        .FirstOrDefault(spell => spell is not null);
++
++    // The best skill that can be cast right now; null means fall back to normal attacks.
++    private MagicType? HuntSpell() => HuntSpellChoices
++        .Where(type => KnownMagic(type) is not null)
++        .Select(type => Known(type))
++        .FirstOrDefault(spell => spell is not null && Mana >= spell.ManaCost && Stamina >= spell.StaminaCost && Arrows >= spell.ArrowCost);
++
++    private bool TryMeditate(DateTimeOffset now)
++    {
++        if (_huntMelee || Mana * 100 >= Stats.MaxMana * MeditatePercent || KnownMagic(Meditation) is null ||
++            Known(Meditation) is not { } meditation || !Ready(meditation, now) || Stamina < meditation.StaminaCost)
++        {
++            return false;
++        }
++
++        return StartCast(meditation, this, X, Y, now);
++    }
+ 
+     private bool IsValidPrey(Monster? monster) =>
+         monster is not null && monster.IsAlive && monster.Map == Map && DistanceTo(monster) <= Map.ViewRange &&
+@@ -431,7 +471,9 @@ public partial class Player
+             }
+         }
+ 
+-        if (_huntSpell != 0 && Mana * 100 < Stats.MaxMana * ManaPotionPercent)
++        var manaPercent = KnownMagic(Meditation) is null ? ManaPotionPercent : ManaPotionPercentWithMeditation;
++
++        if (PreferredHuntSpell() is not null && Mana * 100 < Stats.MaxMana * manaPercent)
+         {
+             DrinkBest(potion => potion.Mana, Stats.MaxMana - Mana);
+         }
+diff --git a/Conquer.Game/Services/CommandService.cs b/Conquer.Game/Services/CommandService.cs
+index c0726bb..e997f7e 100644
+--- a/Conquer.Game/Services/CommandService.cs
++++ b/Conquer.Game/Services/CommandService.cs
+@@ -35,7 +35,7 @@ public class CommandService(GameData data, World world, GameStore store, IHostAp
+     private static readonly FrozenDictionary<string, string> Usages = new Dictionary<string, string>
+     {
+         ["/attr"] = "/attr {str|agi|vit|spi} {points}",
+-        ["/autohunt"] = "/autohunt [off|skill name]",
++        ["/autohunt"] = "/autohunt [off|melee|skill name]",
+         ["/avatar"] = "/avatar {id}",
+         ["/ban"] = "/ban {player}",
+         ["/dialog"] = "/dialog {id}",
+-- 
+2.43.0
+
